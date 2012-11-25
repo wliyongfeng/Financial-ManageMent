@@ -68,6 +68,19 @@ public class JsonProcessor {
         }
         write(expenses);
     }
+    
+	public void editExpense(@Nonnull ExpenseDto dto, int index) {
+		checkNotNull(dto);
+		checkArgument(index >= 0);
+		Expenses expenses = read();
+		ExpenseDto editDto = expenses.getExpenses().get(index);
+		editDto.setAmount(dto.getAmount());
+		editDto.setAuthor(dto.getAuthor());
+		editDto.setDate(dto.getDate());
+		editDto.setReason(dto.getReason());
+
+		write(expenses);
+	}
 
     /**
      * this method delete a definite record in the json file
@@ -87,8 +100,10 @@ public class JsonProcessor {
      * @param args
      */
     public static void main(String[] args) {
-        ExpenseDto dto = new ExpenseDto("liyongfeng", 50, "dish",
-                Calendar.getInstance());
+    	Calendar calendar = Calendar.getInstance();
+		ExpenseDto dto = new ExpenseDto("liyongfeng", 50, "dish", new MyDate(
+				calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH),
+				calendar.get(Calendar.DAY_OF_MONTH)));
         List<ExpenseDto> list = new ArrayList<ExpenseDto>();
         list.add(dto);
 
@@ -109,9 +124,6 @@ public class JsonProcessor {
         }
 
         System.out.println(expenses.getExpenses());
-        System.out.println(expenses.getExpenses().get(0).getCalendar()
-                .get(Calendar.MONTH));
-        
     }
 
 }

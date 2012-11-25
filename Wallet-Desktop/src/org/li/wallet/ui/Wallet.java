@@ -1,17 +1,31 @@
 package org.li.wallet.ui;
 
+import java.util.Calendar;
+
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.KeyAdapter;
+import org.eclipse.swt.events.KeyEvent;
+import org.eclipse.swt.events.MouseAdapter;
+import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.DateTime;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
+import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Text;
+import org.li.wallet.resources.ExpenseDto;
+import org.li.wallet.resources.Expenses;
+import org.li.wallet.resources.JsonProcessor;
+import org.li.wallet.resources.MyDate;
 
 public class Wallet {
+	private JsonProcessor processor = new JsonProcessor();
+	private EditMode mode = EditMode.VIEW;
 
 	protected Shell shell;
 
@@ -31,7 +45,6 @@ public class Wallet {
 	private Group computeGroup;
 
 	// the elements of the info table
-	private TableColumn seqColumn;
 	private TableColumn dateColumn;
 	private TableColumn consumerColumn;
 	private TableColumn amountColumn;
@@ -96,6 +109,8 @@ public class Wallet {
 		initInfoTable();
 		initOperatonGroup();
 		initEditGroup();
+		addAdapterForElements();
+		editGroup.setEnabled(false);
 	}
 
 	/**
@@ -154,10 +169,6 @@ public class Wallet {
 		historyInfoTable.setHeaderVisible(true);
 		historyInfoTable.setBounds(10, 112, 655, 325);
 
-		seqColumn = new TableColumn(historyInfoTable, SWT.NONE);
-		seqColumn.setWidth(100);
-		seqColumn.setText("seq");
-
 		dateColumn = new TableColumn(historyInfoTable, SWT.NONE);
 		dateColumn.setWidth(117);
 		dateColumn.setText("date");
@@ -173,6 +184,11 @@ public class Wallet {
 		descriptionColumn = new TableColumn(historyInfoTable, SWT.NONE);
 		descriptionColumn.setWidth(192);
 		descriptionColumn.setText("description");
+
+		Expenses expenses = processor.read();
+		for (ExpenseDto expense : expenses.getExpenses()) {
+			addNewItem(expense);
+		}
 	}
 
 	private void initOperatonGroup() {
@@ -237,4 +253,197 @@ public class Wallet {
 		cancelButton.setBounds(488, 69, 80, 33);
 		cancelButton.setText("cancel");
 	}
+
+	private TableItem addNewItem(ExpenseDto dto) {
+		TableItem newItem = new TableItem(historyInfoTable, SWT.CENTER);
+		newItem.setText(new String[] { dto.getDate().toString(),
+				dto.getAuthor(), String.valueOf(dto.getAmount()),
+				dto.getReason() });
+		return newItem;
+	}
+
+	private void editNewItem(ExpenseDto dto, int index) {
+		TableItem newItem = historyInfoTable.getItem(index);
+		newItem.setText(new String[] { dto.getDate().toString(),
+				dto.getAuthor(), String.valueOf(dto.getAmount()),
+				dto.getReason() });
+	}
+
+	/**
+	 * initialize the edit group
+	 */
+	private void emptyEditGroup() {
+		consumerText.setText("");
+		Calendar today = Calendar.getInstance();
+		consumeDate.setDate(today.get(Calendar.YEAR),
+				today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH));
+		reasonText.setText("");
+		amountText.setText("");
+	}
+
+	/**
+	 * This method get <code>ExpenseDto</code> from the data of the edit group
+	 * 
+	 * @return
+	 */
+	private ExpenseDto generateExpenseDto() {
+		String consumer = consumerText.getText();
+		String reason = reasonText.getText();
+		String amount = amountText.getText();
+		double money;
+		if (consumer.equals("") || reason.equals("") || amount.equals("")) {
+			MessageBox box = new MessageBox(shell, SWT.PUSH);
+			box.setText("warning");
+			box.setMessage("can not be empty");
+			box.open();
+			consumerText.setFocus();
+			return null;
+		}
+		try {
+			money = Double.valueOf(amount);
+		} catch (NumberFormatException e) {
+			MessageBox box = new MessageBox(shell, SWT.PUSH);
+			box.setText("warning");
+			box.setMessage("can not convert to Double");
+			box.open();
+			amountText.setFocus();
+			return null;
+		}
+		return new ExpenseDto(consumer, money, reason, new MyDate(consumeDate
+				.getYear(), consumeDate.getMonth(), consumeDate.getDay()));
+	}
+	
+	private void addAdapterForElements() {
+		// begin add adapter for operation group
+		editButton.addKeyListener(new KeyAdapter() {
+			public void keyReleased(final KeyEvent e) {
+				if (13 == e.keyCode) {
+					beginEditExistedExpense();
+				}
+			}
+		});
+
+		editButton.addMouseListener(new MouseAdapter() {
+			public void mouseDown(final MouseEvent e) {
+				beginEditExistedExpense();
+			}
+		});
+
+		deleteButton.addMouseListener(new MouseAdapter() {
+			public void mouseDown(final MouseEvent e) {
+				int index = historyInfoTable.getSelectionIndex();
+				if (index != -1) {
+					historyInfoTable.remove(index);
+					processor.deleteExpense(index);
+
+					mode = EditMode.VIEW;
+				}
+			}
+		});
+
+		newButton.addKeyListener(new KeyAdapter() {
+			public void keyReleased(final KeyEvent e) {
+				if (e.keyCode == 13) {
+					beginEditNewExpense();
+				}
+			}
+		});
+
+		newButton.addMouseListener(new MouseAdapter() {
+			public void mouseDown(final MouseEvent e) {
+				beginEditNewExpense();
+			}
+		});
+		// end add adapter for operation group
+		
+		// begin add adapter for edit group
+		amountText.addKeyListener(new KeyAdapter() {
+			public void keyReleased(final KeyEvent e) {
+				if (13 == e.keyCode) {
+					addNewExpense();
+				}
+			}
+		});
+
+		okButton.addMouseListener(new MouseAdapter() {
+			public void mouseDown(final MouseEvent e) {
+				addNewExpense();
+			}
+		});
+
+		okButton.addKeyListener(new KeyAdapter() {
+			public void keyPressed(final KeyEvent e) {
+				if (13 == e.keyCode) {
+					addNewExpense();
+				}
+			}
+		});
+
+		cancelButton.addMouseListener(new MouseAdapter() {
+			public void mouseDown(final MouseEvent e) {
+				emptyEditGroup();
+				editGroup.setEnabled(false);
+				mode = EditMode.VIEW;
+			}
+		});
+		// end of add adapter for edit group
+	}
+
+	private void beginEditExistedExpense() {
+		TableItem[] selected = historyInfoTable.getSelection();
+		if (selected.length == 0) {
+			return;
+		}
+
+		TableItem first = selected[0];
+		String date = first.getText(0);
+		consumerText.setText(first.getText(1));
+		reasonText.setText(first.getText(3));
+		amountText.setText(first.getText(2));
+		String[] splitDate = date.split("/");
+		consumeDate.setYear(Integer.valueOf(splitDate[0]));
+		consumeDate.setMonth(Integer.valueOf(splitDate[1]));
+		consumeDate.setDay(Integer.valueOf(splitDate[2]));
+
+		editGroup.setEnabled(true);
+		consumerText.setFocus();
+		mode = EditMode.EDIT;
+	
+	}
+
+	/**
+	 * begin to edit new expense
+	 */
+	private void beginEditNewExpense() {
+		editGroup.setEnabled(true);
+		emptyEditGroup();
+		consumerText.setText(System.getProperty("user.name"));
+		consumerText.setFocus();
+		mode = EditMode.NEW;
+	}
+
+	/**
+	 * the event of add new expense or edit the existed expense
+	 */
+	private void addNewExpense() {
+		ExpenseDto dto = generateExpenseDto();
+		if (null == dto) {
+			return;
+		}
+
+		int index = historyInfoTable.getSelectionIndex();
+		if (EditMode.NEW == mode) {
+			historyInfoTable.setSelection(addNewItem(dto));
+			processor.addExpense(dto);
+		} else if (EditMode.EDIT == mode) {
+			editNewItem(dto, index);
+			processor.editExpense(dto, index);
+		}
+
+		editGroup.setEnabled(false);
+		emptyEditGroup();
+		newButton.setFocus();
+		mode = EditMode.VIEW;
+	}
+
 }

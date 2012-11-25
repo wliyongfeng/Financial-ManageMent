@@ -1,1 +1,1 @@
-{"expenses":[{"reason":"dish","amount":50.0,"author":"liyongfeng","calendar":1353172754310}]}
+{"expenses":[{"author":"works","amount":14.0,"reason":"buy dish","date":{"month":10,"year":2012,"day":25}},{"author":"works","amount":160.0,"reason":"交电费","date":{"month":10,"year":2012,"day":25}},{"author":"works","amount":23.0,"reason":"水费","date":{"month":10,"year":2012,"day":25}},{"author":"works","amount":23.0,"reason":"煤气费","date":{"month":10,"year":2012,"day":25}},{"author":"works","amount":23.0,"reason":"sd","date":{"month":10,"year":2012,"day":25}}]}
