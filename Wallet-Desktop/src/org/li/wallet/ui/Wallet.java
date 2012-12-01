@@ -1,6 +1,10 @@
 package org.li.wallet.ui;
 
 import java.util.Calendar;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.KeyAdapter;
@@ -23,7 +27,10 @@ import org.li.wallet.resources.Expenses;
 import org.li.wallet.resources.JsonProcessor;
 import org.li.wallet.resources.MyDate;
 
+import com.google.common.collect.Lists;
+
 public class Wallet {
+	private Text statisticText;
 	private JsonProcessor processor = new JsonProcessor();
 	private EditMode mode = EditMode.VIEW;
 
@@ -100,7 +107,7 @@ public class Wallet {
 	 * Create contents of the window
 	 */
 	protected void createContents() {
-		shell = new Shell();
+		shell = new Shell(SWT.MIN | SWT.RESIZE | SWT.CLOSE);
 		shell.setSize(835, 629);
 		shell.setText("Wallet");
 
@@ -111,6 +118,7 @@ public class Wallet {
 		initEditGroup();
 		addAdapterForElements();
 		editGroup.setEnabled(false);
+		statistic();
 	}
 
 	/**
@@ -143,10 +151,20 @@ public class Wallet {
 		filterToDate.setBounds(230, 60, 114, 25);
 
 		searchButton = new Button(filterGroup, SWT.NONE);
+		searchButton.addMouseListener(new MouseAdapter() {
+			public void mouseDown(final MouseEvent e) {
+				search();
+			}
+		});
 		searchButton.setText("search");
 		searchButton.setBounds(230, 18, 86, 27);
 
 		searchAllButton = new Button(filterGroup, SWT.NONE);
+		searchAllButton.addMouseListener(new MouseAdapter() {
+			public void mouseDown(final MouseEvent e) {
+				searchAll();
+			}
+		});
 		searchAllButton.setBounds(322, 19, 87, 27);
 		searchAllButton.setText("search all");
 	}
@@ -158,13 +176,18 @@ public class Wallet {
 		computeGroup = new Group(shell, SWT.NONE);
 		computeGroup.setText("Statistic");
 		computeGroup.setBounds(499, 6, 302, 100);
+
+		statisticText = new Text(computeGroup, SWT.V_SCROLL | SWT.READ_ONLY
+				| SWT.MULTI | SWT.BORDER);
+		statisticText.setBounds(10, 22, 262, 68);
 	}
 
 	/**
 	 * init the info table and the colums
 	 */
 	private void initInfoTable() {
-		historyInfoTable = new Table(shell, SWT.BORDER);
+		historyInfoTable = new Table(shell, SWT.FULL_SELECTION | SWT.MULTI
+				| SWT.BORDER);
 		historyInfoTable.setLinesVisible(true);
 		historyInfoTable.setHeaderVisible(true);
 		historyInfoTable.setBounds(10, 112, 655, 325);
@@ -185,10 +208,7 @@ public class Wallet {
 		descriptionColumn.setWidth(192);
 		descriptionColumn.setText("description");
 
-		Expenses expenses = processor.read();
-		for (ExpenseDto expense : expenses.getExpenses()) {
-			addNewItem(expense);
-		}
+		searchAll();
 	}
 
 	private void initOperatonGroup() {
@@ -312,7 +332,7 @@ public class Wallet {
 		return new ExpenseDto(consumer, money, reason, new MyDate(consumeDate
 				.getYear(), consumeDate.getMonth(), consumeDate.getDay()));
 	}
-	
+
 	private void addAdapterForElements() {
 		// begin add adapter for operation group
 		editButton.addKeyListener(new KeyAdapter() {
@@ -331,13 +351,21 @@ public class Wallet {
 
 		deleteButton.addMouseListener(new MouseAdapter() {
 			public void mouseDown(final MouseEvent e) {
+
+				System.out.println(historyInfoTable.getSelectionCount());
+				System.out.println(historyInfoTable.getSelectionIndex());
 				int index = historyInfoTable.getSelectionIndex();
-				if (index != -1) {
+				int count = historyInfoTable.getSelectionCount();
+				if (-1 == index) {
+					return;
+				}
+				for (int i = 0; i < count; i++) {
 					historyInfoTable.remove(index);
 					processor.deleteExpense(index);
-
-					mode = EditMode.VIEW;
+					index--;
 				}
+				statistic();
+				mode = EditMode.VIEW;
 			}
 		});
 
@@ -355,7 +383,7 @@ public class Wallet {
 			}
 		});
 		// end add adapter for operation group
-		
+
 		// begin add adapter for edit group
 		amountText.addKeyListener(new KeyAdapter() {
 			public void keyReleased(final KeyEvent e) {
@@ -408,7 +436,7 @@ public class Wallet {
 		editGroup.setEnabled(true);
 		consumerText.setFocus();
 		mode = EditMode.EDIT;
-	
+
 	}
 
 	/**
@@ -443,7 +471,76 @@ public class Wallet {
 		editGroup.setEnabled(false);
 		emptyEditGroup();
 		newButton.setFocus();
+		statistic();
 		mode = EditMode.VIEW;
+	}
+
+	private void statistic() {
+		Map<String, Double> map = new HashMap<String, Double>();
+		Expenses expenses = processor.read();
+		String consumer = null;
+		Double sum = 0.0;
+		for (ExpenseDto dto : expenses.getExpenses()) {
+			consumer = dto.getAuthor();
+			sum = map.get(consumer);
+			if (sum != null) {
+				map.put(consumer, sum + dto.getAmount());
+			} else {
+				map.put(consumer, dto.getAmount());
+			}
+		}
+
+		StringBuilder builder = new StringBuilder();
+		for (Entry<String, Double> entry : map.entrySet()) {
+			builder.append(entry.getKey()).append(" : ").append(
+					entry.getValue()).append("\n");
+		}
+		statisticText.setText(builder.toString());
+	}
+
+	private void searchAll() {
+		consumerFilterText.setText("");
+		historyInfoTable.removeAll();
+		Expenses expenses = processor.read();
+		for (ExpenseDto expense : expenses.getExpenses()) {
+			addNewItem(expense);
+		}
+	}
+
+	private void search() {
+		Expenses expenses = processor.read();
+
+		String consumer = consumerFilterText.getText();
+		MyDate fromDate = new MyDate(filterFromDate.getYear(), filterFromDate
+				.getMonth(), filterFromDate.getDay());
+		MyDate toDate = new MyDate(filterToDate.getYear(), filterToDate
+				.getMonth(), filterToDate.getDay());
+		List<ExpenseDto> dtos = expenses.getExpenses();
+		List<ExpenseDto> filtCounsumer = Lists.newArrayList();
+		
+		if ("".equals(consumer) || consumer == null) {
+			filtCounsumer = dtos;
+		} else {
+			for (ExpenseDto dto : dtos) {
+				if (dto.getAuthor().equals(consumer)) {
+					System.out.println("equal");
+					filtCounsumer.add(dto);
+				}
+			}
+		}
+
+		List<ExpenseDto> filtDate = Lists.newArrayList();
+		for (ExpenseDto dto : filtCounsumer) {
+			if (dto.getDate().compareTo(fromDate) >= 0
+					&& dto.getDate().compareTo(toDate) <= 0) {
+				filtDate.add(dto);
+			}
+		}
+
+		historyInfoTable.removeAll();
+		for (ExpenseDto expense : filtDate) {
+			addNewItem(expense);
+		}
 	}
 
 }

@@ -1,6 +1,6 @@
 package org.li.wallet.resources;
 
-public class MyDate {
+public class MyDate implements Comparable<MyDate>{
 	private int year;
 	private int month;
 	private int day;
@@ -43,6 +43,19 @@ public class MyDate {
 	public String toString() {
 		return new StringBuilder().append(year).append('/').append(month)
 				.append('/').append(day).toString();
+	}
+
+	public int compareTo(MyDate date) {
+		if (year != date.getYear()) {
+			return year - date.getYear();
+		}
+		if (month != date.getMonth()) {
+			return month - date.getMonth();
+		}
+		if (day != date.getDay()) {
+			return day - date.getDay();
+		}
+		return 0;
 	}
 
 }
