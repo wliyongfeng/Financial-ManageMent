@@ -11,6 +11,7 @@ import org.eclipse.swt.events.KeyAdapter;
 import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.MouseAdapter;
 import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.DateTime;
 import org.eclipse.swt.widgets.Display;
@@ -107,7 +108,9 @@ public class Wallet {
 	 * Create contents of the window
 	 */
 	protected void createContents() {
+		Image image = new Image(Display.getCurrent(), "ui/dollar-folder-icon.png");
 		shell = new Shell(SWT.MIN | SWT.RESIZE | SWT.CLOSE);
+		shell.setImage(image);
 		shell.setSize(835, 629);
 		shell.setText("Wallet");
 
