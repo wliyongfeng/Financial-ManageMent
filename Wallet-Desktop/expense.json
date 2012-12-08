@@ -1,1 +1,1 @@
-{"expenses":[]}
+{"expenses":[{"author":"works","amount":60.0,"reason":"买菜","date":{"month":11,"year":2012,"day":6}},{"author":"han","amount":450.0,"reason":"电费","date":{"month":11,"year":2012,"day":6}}]}
